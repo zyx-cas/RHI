@@ -19,8 +19,8 @@ Weight = Opts.Weight;
 if k == 1
     W_M1_S1 = zeros(N,1) + Weight; 
     W_V_EBA = zeros(N,1) + Weight;
-    W_S1_TPJ = zeros(N,1) + Weight;
-    W_EBA_TPJ = zeros(N,1) + Weight;
+    W_S1_TPJ = zeros(N,1) + Weight*150;
+    W_EBA_TPJ = zeros(N,1) + Weight*150;
     W_TPJ_AI = zeros(N,1) + Weight;
     W_S1_AI = zeros(N,1) + Weight;
     W_EBA_AI = zeros(N,1) + Weight;
@@ -38,8 +38,8 @@ Motion_End = Motion_Start + ContinueTime;
 Vision_Start = Motion_End + DealyTime;
 Vision_End = Vision_Start + ContinueTime;
 
-List_W_S1_TPJ = [];
-List_W_EBA_TPJ = [];
+List_W_S1_AI = [];
+List_W_EBA_AI = [];
 
 for i = 1:MoveNum
     V_M1 = zeros(N,1);
@@ -81,7 +81,6 @@ for i = 1:MoveNum
         S_S1_n(V_S1_n < fire_threshold) = 0; 
         if sum(S_S1_n) > 0       
             Fired_S1 = Fired_S1 + 1; 
-            W_LatInh_S1_TPJ = tanh(W_LatInh_S1_TPJ - 2 * acos(S_S1_n) / pi .* exp(Fired_S1) - 1) + 1;  
             W_LatInh_S1_AI = tanh(W_LatInh_S1_AI - 2 * acos(S_S1_n) .* exp(Fired_S1) - 1) + 1;
         end        
         
@@ -92,7 +91,6 @@ for i = 1:MoveNum
         S_EBA_n(V_EBA_n < fire_threshold) = 0; 
         if sum(S_EBA_n) > 0  
             Fired_EBA = Fired_EBA + 1;
-            W_LatInh_EBA_TPJ = tanh(W_LatInh_EBA_TPJ - 2 * acos(S_EBA_n) / pi .* exp(Fired_EBA) - 1) + 1;
             W_LatInh_EBA_AI = tanh(W_LatInh_EBA_AI - 2 * acos(S_EBA_n) / pi .* exp(Fired_EBA) - 1) + 1;
         end
       
@@ -100,25 +98,11 @@ for i = 1:MoveNum
         V_TPJ_Input = [V_S1_n, V_EBA_n];
         W_TPJ_Input = [W_S1_TPJ, W_EBA_TPJ];
         V_TPJ_n = Neuron_Post(V_TPJ, V_TPJ_Input, W_TPJ_Input, C_TPJ);         
-        S_TPJ_n = V_TPJ_n;
-        S_TPJ_n(V_TPJ_n >= fire_threshold) = 1; 
-        S_TPJ_n(V_TPJ_n < fire_threshold) = 0;
-        
-        % Update weights
-        % S1 -> TPJ    dW_S1_TPJ
-        ddW_S1_TPJ = DeltaWeight(V_S1, V_S1_n, V_TPJ, V_TPJ_n, alpha, beta ,gamma);
-        dW_S1_TPJ = dW_S1_TPJ + ddW_S1_TPJ; 
-        % EBA -> TPJ   dW_EBA_TPJ  
-        ddW_EBA_TPJ = DeltaWeight(V_S1, V_S1_n, V_TPJ, V_TPJ_n, alpha, beta ,gamma);
-        dW_EBA_TPJ = dW_EBA_TPJ + ddW_EBA_TPJ;
             
         % S1 & TPJ & EBA -> AI
         V_AI_Input = [V_S1_n, V_TPJ_n, V_EBA_n];
         W_AI_Input = [W_S1_AI, W_TPJ_AI, W_EBA_AI]; 
-        V_AI_n = Neuron_Post(V_AI, V_AI_Input, W_AI_Input, C_AI); 
-        S_AI_n = V_AI_n;
-        S_AI_n(V_AI_n >= fire_threshold) = 1; 
-        S_AI_n(V_AI_n < fire_threshold) = 0;    
+        V_AI_n = Neuron_Post(V_AI, V_AI_Input, W_AI_Input, C_AI);   
         
         % Update weights
         % S1 -> AI   dW_S1_AI
@@ -135,21 +119,19 @@ for i = 1:MoveNum
         V_TPJ = V_TPJ_n;
         V_AI = V_AI_n;       
     end    
-
-    W_S1_TPJ = W_S1_TPJ + dW_S1_TPJ.*W_LatInh_S1_TPJ ; % S1 -> TPJ
-    W_EBA_TPJ = W_EBA_TPJ + dW_EBA_TPJ.*W_LatInh_EBA_TPJ ; % EBA -> TPJ 
+    
     W_S1_AI = W_S1_AI + dW_S1_AI.*W_LatInh_S1_AI ; % S1 -> AI
     W_EBA_AI = W_EBA_AI + dW_EBA_AI.*W_LatInh_EBA_AI ; % EBA -> AI 
       
-    List_W_S1_TPJ = [List_W_S1_TPJ, W_S1_AI];
-    List_W_EBA_TPJ = [List_W_EBA_TPJ, W_EBA_AI];
+    List_W_S1_AI = [List_W_S1_AI, W_S1_AI];
+    List_W_EBA_AI = [List_W_EBA_AI, W_EBA_AI];
 end
 
 if k == 1
     figure;
-    L1 = plot((1:MoveNum),List_W_S1_TPJ(k,:),'linewidth',2,'color','k')
+    L1 = plot((1:MoveNum),List_W_S1_AI(k,:),'linewidth',2,'color','k')
     hold on;
-    L2 = plot((1:MoveNum),List_W_EBA_TPJ(k,:),'linewidth',2,'color','r')
+    L2 = plot((1:MoveNum),List_W_EBA_AI(k,:),'linewidth',2,'color','r')
     xlabel('Training times','fontsize',14);
     ylabel('Weight','fontsize',14);
     set(gca,'fontsize',13)
